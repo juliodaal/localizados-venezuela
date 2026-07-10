@@ -6,6 +6,7 @@ import {
   createAdminSessionResponse,
 } from "@/lib/admin-auth";
 import { RateLimitError } from "@/lib/errors";
+import { hashClientIp } from "@/lib/security/client-ip";
 import { loginRateLimiter } from "@/lib/security/login-limiter";
 import { safeJsonParseBody } from "@/lib/safe-json";
 
@@ -14,9 +15,7 @@ export const POST = withErrorHandler(async (req: Request) => {
     return jsonResponse({ error: "ADMIN_SECRET no configurado" }, { status: 503 });
   }
 
-  const ip = req.headers.get("x-forwarded-for") ?? "unknown";
-  const ipHash = ip;
-  const rateCheck = await loginRateLimiter.check(`login:${ipHash}`);
+  const rateCheck = await loginRateLimiter.check(`login:${hashClientIp(req)}`);
   if (!rateCheck.allowed) {
     throw new RateLimitError("Demasiadas solicitudes. Espera 15 minutos.");
   }
